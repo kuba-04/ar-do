@@ -1,0 +1,16 @@
+[package]
+name = "ar-do"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+todo_cli_rs = "0.1.1"
+actix-web = "4.4"
+actix-cors = "0.6"
+reqwest = { version = "0.11", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+config = "0.13"
+tokio = { version = "1.0", features = ["full"] }
+env_logger = "0.10"
+dialoguer = "0.11"
