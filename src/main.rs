@@ -1,9 +1,8 @@
 use dialoguer::{Input, Password};
 use serde::{Deserialize, Serialize};
-use std::fs;
+use std::{env, fs};
 use std::path::PathBuf;
-
-const ARDOR_NODE_URL: &str = "https://testardor.jelurida.com/nxt";
+use dotenv::dotenv;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ArdorAccount {
@@ -13,7 +12,8 @@ struct ArdorAccount {
 
 impl ArdorAccount {
     fn config_path() -> PathBuf {
-        let mut path = PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| ".".to_string()));
+        let mut path = PathBuf::new();
+        path.push(std::env::var("HOME").unwrap_or_else(|_| ".".to_string()));
         path.push(".todo-ardor");
         path.push("config.json");
         path
@@ -21,7 +21,7 @@ impl ArdorAccount {
 
     fn load() -> Option<Self> {
         let path = Self::config_path();
-        if !path.exists() {
+        if !path.as_path().exists() {
             return None;
         }
         fs::read_to_string(path)
@@ -31,81 +31,41 @@ impl ArdorAccount {
 
     fn save(&self) -> std::io::Result<()> {
         let path = Self::config_path();
-        fs::create_dir_all(path.parent().unwrap())?;
+        fs::create_dir_all(path.as_path().parent().unwrap())?;
         let content = serde_json::to_string_pretty(self)?;
         fs::write(path, content)
     }
 
-    async fn get_account_info(&self) -> Result<AccountInfo, Box<dyn std::error::Error>> {
+    async fn get_account_info(&self, node_url: &str) -> anyhow::Result<AccountInfo> {
         let client = reqwest::Client::new();
         let response = client
-            .post(ARDOR_NODE_URL)
+            .post(node_url)
             .form(&[
                 ("requestType", "getAccount"),
-                ("account", &self.account_id),
+                ("account", &self.account_id.as_str()),
             ])
             .send()
             .await?;
-
         let text = response.text().await?;
-
-        if let Ok(error) = serde_json::from_str::<ErrorResponse>(&text) {
-            return Err(format!(
-                "Ardor API Error: {} (code: {}) for account: {}",
-                error.error_description, error.error_code, error.account_rs
-            )
-            .into());
-        }
-
-        // If it's not an error, parse as account info
         let account_info: AccountInfo = serde_json::from_str(&text)?;
         Ok(account_info)
     }
 
-    async fn get_balance(&self) -> Result<BalanceResponse, Box<dyn std::error::Error>> {
+    async fn get_balance(&self, node_url: &str) -> anyhow::Result<BalanceResponse>  {
         let client = reqwest::Client::new();
         let response = client
-            .post(ARDOR_NODE_URL)
+            .post(node_url)
             .form(&[
                 ("requestType", "getBalance"),
-                ("account", &self.account_id),
+                ("account", &self.account_id.as_str()),
                 ("chain", "2"),
             ])
             .send()
             .await?;
-
         let text = response.text().await?;
-
-        if let Ok(error) = serde_json::from_str::<GeneralErrorResponse>(&text) {
-            return Err(format!(
-                "Ardor API Error: {} (code: {})",
-                error.error_description, error.error_code
-            )
-            .into());
-        }
-
         let balance: BalanceResponse = serde_json::from_str(&text)?;
         Ok(balance)
     }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct ErrorResponse {
-    #[serde(rename = "errorDescription")]
-    error_description: String,
-    #[serde(rename = "errorCode")]
-    error_code: i32,
-    #[serde(rename = "accountRS")]
-    account_rs: String,
-    account: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct GeneralErrorResponse {
-    #[serde(rename = "errorDescription")]
-    error_description: String,
-    #[serde(rename = "errorCode")]
-    error_code: i32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -133,6 +93,10 @@ struct BalanceResponse {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Welcome to To-do on ardor!");
     println!("==========================");
+    dotenv().ok();
+    let env_url_var  = env::var("ARDOR_NODE_URL")
+        .expect("ARDOR_NODE_URL must be set in env file");
+    let node_url= env_url_var.as_str();
 
     let account = match ArdorAccount::load() {
         Some(account) => {
@@ -167,17 +131,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     print!("Connecting to Ardor node...");
-    match account.get_account_info().await {
-        Ok(info) => {
+    match account.get_account_info(node_url).await {
+        Ok(_info) => {
             println!("connected!");
         }
         Err(e) => {
             println!("Failed to connect to Ardor node: {}", e);
-            println!("Please make sure the node is running at {}", ARDOR_NODE_URL);
+            println!("Please make sure the node is running at {}", node_url);
         }
     }
 
-    match account.get_balance().await {
+    match account.get_balance(node_url).await {
         Ok(balance) => println!("Your balance: {}", balance.balance_nqt),
         Err(e) => {
             println!("Failed to get balance: {}", e);
