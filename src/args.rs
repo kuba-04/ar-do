@@ -1,4 +1,4 @@
-use clap::{Subcommand, Parser};
+use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[command(name = "ardo", version, about)]
@@ -16,6 +16,5 @@ pub enum Command {
     #[command(about = "Check status")]
     Status {},
     #[command(about = "Account Info")]
-    Info {}
-
+    Info {},
 }

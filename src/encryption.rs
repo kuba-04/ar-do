@@ -1,12 +1,11 @@
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use chacha20poly1305::{
-    aead::{Aead, KeyInit, Payload as AeadPayload},
     Key as ChaChaKey, XChaCha20Poly1305, XNonce,
+    aead::{Aead, KeyInit, Payload as AeadPayload},
 };
 use dotenv::dotenv;
 use scrypt;
 use std::env;
-
 
 /// Converts encrypted data to a base64-encoded string for storage or transmission
 pub fn encrypt_to_string(
@@ -45,7 +44,9 @@ fn encrypt_data(
     };
 
     // STEP 5: ENCRYPTION
-    let ciphertext = cipher.encrypt(nonce_obj, aead_payload).expect("encryption failure!");
+    let ciphertext = cipher
+        .encrypt(nonce_obj, aead_payload)
+        .expect("encryption failure!");
 
     Ok(EncryptedPayload {
         ciphertext,
@@ -63,7 +64,7 @@ fn get_salt_from_env() -> Result<[u8; 32], anyhow::Error> {
     if salt_bytes.len() >= 32 {
         salt.copy_from_slice(&salt_bytes[0..32]);
     } else {
-        salt[..salt_bytes.len()].copy_from_slice(&salt_bytes);
+        salt[..salt_bytes.len()].copy_from_slice(salt_bytes);
         // remaining bytes remain 0
     }
     Ok(salt)
@@ -136,13 +137,14 @@ fn decrypt_data(
     // STEP 3: PAYLOAD CONSTRUCTION (for decryption)
     let aad = [KeySecurity::High as u8];
     let aead_payload = AeadPayload {
-        msg: &encrypted_payload.ciphertext.as_slice(),
+        msg: encrypted_payload.ciphertext.as_slice(),
         aad: &aad,
     };
     let nonce_obj = XNonce::from_slice(&encrypted_payload.nonce);
 
     // STEP 4: DECRYPTION
-    let decrypted_bytes = cipher.decrypt(nonce_obj, aead_payload)
+    let decrypted_bytes = cipher
+        .decrypt(nonce_obj, aead_payload)
         .expect("decryption failed");
 
     Ok(decrypted_bytes)

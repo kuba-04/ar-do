@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ArdorAccount {
     account_id: String,
     secret_phrase: String,
@@ -37,7 +37,6 @@ impl BalanceResponse {
 }
 
 impl ArdorAccount {
-
     pub fn new(account_id: String, secret_phrase: String, node_url: String) -> ArdorAccount {
         ArdorAccount {
             account_id,
@@ -46,9 +45,14 @@ impl ArdorAccount {
         }
     }
 
-    pub fn get_account_id(&self) -> &str {
-        self.account_id.as_str()
+    pub fn get_node(&self) -> String {
+        self.node_url.to_string()
     }
+
+    pub fn get_account_id(&self) -> String {
+        self.account_id.to_string()
+    }
+
     fn config_path() -> PathBuf {
         let mut path = PathBuf::new();
         path.push(std::env::var("HOME").unwrap_or_else(|_| ".".to_string()));
@@ -72,36 +76,5 @@ impl ArdorAccount {
         fs::create_dir_all(path.as_path().parent().unwrap())?;
         let content = serde_json::to_string_pretty(self)?;
         fs::write(path, content)
-    }
-
-    pub async fn get_account_info(&self) -> anyhow::Result<AccountInfo> {
-        let client = reqwest::Client::new();
-        let response = client
-            .post(self.node_url.as_str())
-            .form(&[
-                ("requestType", "getAccount"),
-                ("account", &self.account_id.as_str()),
-            ])
-            .send()
-            .await?;
-        let text = response.text().await?;
-        let account_info: AccountInfo = serde_json::from_str(&text)?;
-        Ok(account_info)
-    }
-
-    pub async fn get_balance(&self) -> anyhow::Result<BalanceResponse>  {
-        let client = reqwest::Client::new();
-        let response = client
-            .post(self.node_url.as_str())
-            .form(&[
-                ("requestType", "getBalance"),
-                ("account", &self.account_id.as_str()),
-                ("chain", "2"),
-            ])
-            .send()
-            .await?;
-        let text = response.text().await?;
-        let balance: BalanceResponse = serde_json::from_str(&text)?;
-        Ok(balance)
     }
 }
