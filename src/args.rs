@@ -10,7 +10,10 @@ pub struct Args {
 #[derive(Subcommand, Debug)]
 pub enum Command {
     #[command(about = "Start/resume time entry")]
-    Start {},
+    Start {
+        #[arg(help = "what are you starting")]
+        comment: Option<String>,
+    },
     #[command(about = "Stop/pause time entry")]
     Stop {},
     #[command(about = "Check status")]

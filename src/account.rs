@@ -6,7 +6,6 @@ use std::path::PathBuf;
 pub struct ArdorAccount {
     account_id: String,
     secret_phrase: String,
-    node_url: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -37,27 +36,26 @@ impl BalanceResponse {
 }
 
 impl ArdorAccount {
-    pub fn new(account_id: String, secret_phrase: String, node_url: String) -> ArdorAccount {
+    pub fn new(account_id: String, secret_phrase: String) -> ArdorAccount {
         ArdorAccount {
             account_id,
             secret_phrase,
-            node_url,
         }
     }
 
-    pub fn get_node(&self) -> String {
-        self.node_url.to_string()
+    pub fn get_account_id(&self) -> &str {
+        self.account_id.as_str()
     }
 
-    pub fn get_account_id(&self) -> String {
-        self.account_id.to_string()
+    pub fn get_secret(&self) -> &str {
+        self.secret_phrase.as_str()
     }
 
     fn config_path() -> PathBuf {
         let mut path = PathBuf::new();
         path.push(std::env::var("HOME").unwrap_or_else(|_| ".".to_string()));
         path.push(".todo-ardor");
-        path.push("config.json");
+        path.push("account.json");
         path
     }
 

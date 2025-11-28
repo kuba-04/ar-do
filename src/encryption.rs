@@ -143,11 +143,12 @@ fn decrypt_data(
     let nonce_obj = XNonce::from_slice(&encrypted_payload.nonce);
 
     // STEP 4: DECRYPTION
-    let decrypted_bytes = cipher
-        .decrypt(nonce_obj, aead_payload)
-        .expect("decryption failed");
+    let decrypted_bytes = cipher.decrypt(nonce_obj, aead_payload);
+    if decrypted_bytes.is_err() {
+        return Err(anyhow::Error::msg("decryption failure!"));
+    }
 
-    Ok(decrypted_bytes)
+    Ok(decrypted_bytes.unwrap())
 }
 
 #[derive(Debug, Clone)]
