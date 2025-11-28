@@ -1,16 +1,35 @@
 mod account;
 mod encryption;
+mod args;
 
 use crate::account::ArdorAccount;
-use dialoguer::{Input, Password};
+use crate::args::Args;
 use crate::encryption::encrypt_to_string;
+use clap::Parser;
+use dialoguer::{Input, Password};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args = Args::parse();
 
-    let account = match ArdorAccount::load() {
+    let account = load_account();
+
+    match args.command {
+        Some(command) => match command {
+            args::Command::Start {  } => println!("Starting counter"),
+            args::Command::Stop {  } => println!("Stopping counter"),
+            args::Command::Status {  } => println!("status"),
+            args::Command::Info {  } => account_info(&account).await,
+        }
+        None => {}
+    }
+
+    Ok(())
+}
+
+fn load_account() -> ArdorAccount {
+    match ArdorAccount::load() {
         Some(account) => {
-            println!("Loaded existing account: {}", account.get_account_id());
             account
         }
         None => {
@@ -49,8 +68,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             account
         }
-    };
+    }
+}
 
+async fn account_info(account: &ArdorAccount) {
     print!("Connecting to Ardor node...");
     match account.get_account_info().await {
         Ok(_info) => {
@@ -67,8 +88,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Failed to get balance: {}", e);
         }
     }
-
-    // todo: use clap parser
-
-    Ok(())
 }
